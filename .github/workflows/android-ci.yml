@@ -79,7 +79,7 @@ jobs:
       with:
         api-level: 34
         build-tools: 34.0.0
-        ndk-version: 25.1.8937393
+        ndk-version: 26.3.11579264
         
     - name: 设置 Rust 环境
       run: |
@@ -148,11 +148,30 @@ jobs:
         echo "NDK 版本: $(ls $ANDROID_HOME/ndk/)"
         
         echo "=== 检查 NDK 工具链 ==="
-        if [ -f "$ANDROID_HOME/ndk/25.1.8937393/ndk-build" ]; then
-          echo "✅ ndk-build 存在"
-          $ANDROID_HOME/ndk/25.1.8937393/ndk-build --version
+        # 检查 NDK 26.3.11579264
+        if [ -f "$ANDROID_HOME/ndk/26.3.11579264/ndk-build" ]; then
+          echo "✅ ndk-build 存在 (NDK 26.3.11579264)"
+          $ANDROID_HOME/ndk/26.3.11579264/ndk-build --version
         else
-          echo "❌ ndk-build 不存在"
+          echo "❌ ndk-build 不存在 (NDK 26.3.11579264)"
+        fi
+        
+        # 检查其他可用的 NDK 版本
+        echo "=== 检查其他 NDK 版本 ==="
+        for ndk_version in $(ls $ANDROID_HOME/ndk/); do
+          if [ -f "$ANDROID_HOME/ndk/$ndk_version/ndk-build" ]; then
+            echo "✅ 找到 ndk-build: $ndk_version"
+            $ANDROID_HOME/ndk/$ndk_version/ndk-build --version
+            break
+          else
+            echo "❌ $ndk_version 没有 ndk-build"
+          fi
+        done
+        
+        # 设置正确的 NDK 环境变量
+        if [ -d "$ANDROID_HOME/ndk/26.3.11579264" ]; then
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/26.3.11579264" >> $GITHUB_ENV
+          echo "✅ 设置 NDK 环境变量为 26.3.11579264"
         fi
         
     - name: 构建 Debug APK (完整原生功能)
