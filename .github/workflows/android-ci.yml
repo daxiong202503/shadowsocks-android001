@@ -171,18 +171,33 @@ jobs:
         KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
       continue-on-error: true
       
+    - name: 检查 APK 文件位置
+      run: |
+        echo "=== 查找 APK 文件 ==="
+        find . -name "*.apk" -type f 2>/dev/null || echo "未找到 APK 文件"
+        echo "=== 检查 mobile 模块构建输出 ==="
+        ls -la mobile/build/outputs/apk/ 2>/dev/null || echo "mobile/build/outputs/apk/ 目录不存在"
+        echo "=== 检查所有构建输出目录 ==="
+        find . -path "*/build/outputs/apk/*" -type d 2>/dev/null || echo "未找到 APK 输出目录"
+        
     - name: 上传 Debug APK
       uses: actions/upload-artifact@v4
       with:
         name: shadowsocks-debug-submodule-fixed
-        path: app/build/outputs/apk/debug/*.apk
+        path: |
+          mobile/build/outputs/apk/debug/*.apk
+          app/build/outputs/apk/debug/*.apk
+        if-no-files-found: warn
       if: always()
         
     - name: 上传 Release APK
       uses: actions/upload-artifact@v4
       with:
         name: shadowsocks-release-submodule-fixed
-        path: app/build/outputs/apk/release/*.apk
+        path: |
+          mobile/build/outputs/apk/release/*.apk
+          app/build/outputs/apk/release/*.apk
+        if-no-files-found: warn
       if: always()
       
     - name: 上传构建日志
@@ -205,14 +220,22 @@ jobs:
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### 构建结果" >> $GITHUB_STEP_SUMMARY
         
-        if ls app/build/outputs/apk/debug/*.apk 1> /dev/null 2>&1; then
+        # 检查 Debug APK
+        if ls mobile/build/outputs/apk/debug/*.apk 1> /dev/null 2>&1; then
+          echo "- Debug APK: ✅ 构建成功 (完整原生功能)" >> $GITHUB_STEP_SUMMARY
+          echo "  - 文件大小: $(du -h mobile/build/outputs/apk/debug/*.apk | cut -f1)" >> $GITHUB_STEP_SUMMARY
+        elif ls app/build/outputs/apk/debug/*.apk 1> /dev/null 2>&1; then
           echo "- Debug APK: ✅ 构建成功 (完整原生功能)" >> $GITHUB_STEP_SUMMARY
           echo "  - 文件大小: $(du -h app/build/outputs/apk/debug/*.apk | cut -f1)" >> $GITHUB_STEP_SUMMARY
         else
           echo "- Debug APK: ❌ 构建失败" >> $GITHUB_STEP_SUMMARY
         fi
         
-        if ls app/build/outputs/apk/release/*.apk 1> /dev/null 2>&1; then
+        # 检查 Release APK
+        if ls mobile/build/outputs/apk/release/*.apk 1> /dev/null 2>&1; then
+          echo "- Release APK: ✅ 构建成功 (完整原生功能)" >> $GITHUB_STEP_SUMMARY
+          echo "  - 文件大小: $(du -h mobile/build/outputs/apk/release/*.apk | cut -f1)" >> $GITHUB_STEP_SUMMARY
+        elif ls app/build/outputs/apk/release/*.apk 1> /dev/null 2>&1; then
           echo "- Release APK: ✅ 构建成功 (完整原生功能)" >> $GITHUB_STEP_SUMMARY
           echo "  - 文件大小: $(du -h app/build/outputs/apk/release/*.apk | cut -f1)" >> $GITHUB_STEP_SUMMARY
         else
