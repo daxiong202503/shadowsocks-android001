@@ -26,9 +26,11 @@ jobs:
     - name: Set up Android SDK
       uses: android-actions/setup-android@v3
       with:
-        api-level: 33
-        build-tools: 33.0.0
-        ndk-version: 27.0.12077973
+        packages: |
+          platform-tools
+          platforms;android-33
+          build-tools;33.0.0
+          ndk;27.0.12077973
     
     - name: Set up Rust
       uses: actions-rs/toolchain@v1
