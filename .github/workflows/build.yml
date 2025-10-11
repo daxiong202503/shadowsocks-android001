@@ -1,4 +1,4 @@
-name: Build Android APK (Alternative)
+name: Build Android APK (NDK Fix)
 
 on:
   push:
@@ -13,7 +13,23 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
+      with:
+        submodules: recursive
+        fetch-depth: 0
+        
+    - name: Initialize and update submodules
+      run: |
+        echo "Initializing submodules..."
+        git submodule update --init --recursive --force
+        echo "Submodule status:"
+        git submodule status
+        
+    - name: Verify NDK source files
+      run: |
+        echo "Checking NDK source files..."
+        find core/src/main/jni/ -name "*.c" -o -name "*.cpp" | head -10
+        ls -la core/src/main/jni/redsocks/ || echo "redsocks directory not found"
+        
     - name: Set up JDK 17
       uses: actions/setup-java@v4
       with:
@@ -55,8 +71,11 @@ jobs:
     - name: Make gradlew executable
       run: chmod +x ./gradlew
       
-    - name: Build with Gradle
-      run: ./gradlew assembleDebug --stacktrace
+    - name: Clean build directory
+      run: ./gradlew clean
+      
+    - name: Build with Gradle (Debug)
+      run: ./gradlew assembleDebug --stacktrace --info
       
     - name: Upload APK artifact
       uses: actions/upload-artifact@v4
