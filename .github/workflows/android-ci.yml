@@ -177,13 +177,15 @@ jobs:
     - name: 构建 Debug APK (完整原生功能)
       run: |
         echo "=== 开始构建 Debug APK ==="
-        ./gradlew assembleDebug --info --stacktrace
+        echo "=== 检查 Gradle 弃用警告 ==="
+        ./gradlew assembleDebug --info --stacktrace --warning-mode all
       continue-on-error: false
       
     - name: 构建 Release APK (完整原生功能)
       run: |
         echo "=== 开始构建 Release APK ==="
-        ./gradlew assembleRelease --info --stacktrace
+        echo "=== 检查 Gradle 弃用警告 ==="
+        ./gradlew assembleRelease --info --stacktrace --warning-mode all
       env:
         KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
         KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
