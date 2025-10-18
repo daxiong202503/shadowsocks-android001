@@ -45,6 +45,7 @@ import com.github.shadowsocks.bg.VpnService
 import com.github.shadowsocks.ProfilesFragment
 import com.github.shadowsocks.GlobalSettingsFragment
 import com.github.shadowsocks.AboutFragment
+import com.github.shadowsocks.ToolbarFragment
 import com.github.shadowsocks.core.R
 import com.github.shadowsocks.database.Profile
 import com.github.shadowsocks.database.ProfileManager
@@ -208,7 +209,7 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         }
     }
 
-    private fun displayFragment(fragment: ToolbarFragment) {
+    private fun displayFragment(fragment: Fragment) {
         supportFragmentManager.beginTransaction().replace(R.id.fragment_holder, fragment).commitAllowingStateLoss()
         drawer.closeDrawers()
     }
