@@ -8,7 +8,7 @@
         app:title="@string/auto_connect"/>
     <SwitchPreference
         app:key="directBootAware"
-        app:icon="@drawable/ic_action_lock"
+        app:icon="@drawable/ic_action_security"
         app:summary="@string/direct_boot_aware_summary"
         app:title="@string/direct_boot_aware"/>
 

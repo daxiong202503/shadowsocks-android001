@@ -8,20 +8,11 @@
         <item android:id="@+id/subscriptions"
             android:title="@string/subscriptions"
             android:icon="@drawable/ic_file_cloud_download"/>
-        <item android:id="@+id/userProfile"
-            android:title="用户资料"
-            android:icon="@drawable/ic_action_person"/>
         <item android:id="@+id/customRules"
               android:title="@string/custom_rules"
               android:icon="@drawable/ic_action_assignment"/>
         <item android:id="@+id/globalSettings"
               android:title="@string/settings"
-              android:icon="@drawable/ic_action_settings"/>
-    </group>
-    <group android:id="@+id/dev"
-           android:checkableBehavior="single">
-        <item android:id="@+id/devSettings"
-              android:title="开发设置"
               android:icon="@drawable/ic_action_settings"/>
     </group>
     <group android:id="@+id/misc"
