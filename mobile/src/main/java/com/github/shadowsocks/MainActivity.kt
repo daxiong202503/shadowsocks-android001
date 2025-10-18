@@ -29,6 +29,7 @@ import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import androidx.activity.OnBackPressedCallback
+import androidx.fragment.app.Fragment
 import androidx.appcompat.app.AppCompatActivity
 import androidx.browser.customtabs.CustomTabColorSchemeParams
 import androidx.browser.customtabs.CustomTabsIntent
@@ -174,7 +175,7 @@ class MainActivity : AppCompatActivity(), ShadowsocksConnection.Callback, OnPref
                 displayFragment(ProfilesFragment())
             } else {
                 // 显示登录页面
-                displayFragment(LoginFragment().apply {
+                displayCustomFragment(LoginFragment().apply {
                     setOnLoginSuccessListener {
                         // 登录成功后切换到主页面
                         navigation.menu.findItem(R.id.profiles).isChecked = true
@@ -213,6 +214,11 @@ class MainActivity : AppCompatActivity(), ShadowsocksConnection.Callback, OnPref
         supportFragmentManager.beginTransaction().replace(R.id.fragment_holder, fragment).commitAllowingStateLoss()
         drawer.closeDrawers()
     }
+    
+    private fun displayCustomFragment(fragment: Fragment) {
+        supportFragmentManager.beginTransaction().replace(R.id.fragment_holder, fragment).commitAllowingStateLoss()
+        drawer.closeDrawers()
+    }
 
     override fun onNavigationItemSelected(item: MenuItem): Boolean {
         if (item.isChecked) drawer.closeDrawers() else {
@@ -242,14 +248,14 @@ class MainActivity : AppCompatActivity(), ShadowsocksConnection.Callback, OnPref
                                     displayFragment(ProfilesFragment())
                                 }
                             }
-                            displayFragment(loginFragment)
+                            displayCustomFragment(loginFragment)
                         }
                     }
-                    displayFragment(userProfileFragment)
+                    displayCustomFragment(userProfileFragment)
                 }
                 R.id.devSettings -> {
                     val devSettingsFragment = DevSettingsFragment()
-                    displayFragment(devSettingsFragment)
+                    displayCustomFragment(devSettingsFragment)
                 }
                 else -> return false
             }
