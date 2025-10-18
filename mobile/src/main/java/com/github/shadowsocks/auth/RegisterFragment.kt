@@ -37,7 +37,7 @@ import com.github.shadowsocks.api.models.RegisterRequest
 import kotlinx.coroutines.launch
 
 /**
- * 注册Fragment
+ * 注册Fragment - 简化版本
  */
 class RegisterFragment : Fragment() {
     
@@ -58,47 +58,57 @@ class RegisterFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         
-        setupUI()
+        setupUI(view)
     }
     
-    private fun setupUI() {
-        view?.findViewById<Button>(R.id.btnRegister)?.setOnClickListener {
-            performRegister()
+    private fun setupUI(view: View) {
+        val btnRegister = view.findViewById<Button>(R.id.btnRegister)
+        val btnLogin = view.findViewById<TextView>(R.id.btnLogin)
+        
+        btnRegister?.setOnClickListener {
+            performRegister(view)
         }
         
-        view?.findViewById<TextView>(R.id.btnLogin)?.setOnClickListener {
+        btnLogin?.setOnClickListener {
             navigateToLogin()
         }
     }
     
-    private fun performRegister() {
-        val username = view?.findViewById<EditText>(R.id.etUsername)?.text.toString().trim() ?: ""
-        val email = view?.findViewById<EditText>(R.id.etEmail)?.text.toString().trim() ?: ""
-        val password = view?.findViewById<EditText>(R.id.etPassword)?.text.toString().trim() ?: ""
-        val confirmPassword = view?.findViewById<EditText>(R.id.etConfirmPassword)?.text.toString().trim() ?: ""
+    private fun performRegister(view: View) {
+        val etUsername = view.findViewById<EditText>(R.id.etUsername)
+        val etEmail = view.findViewById<EditText>(R.id.etEmail)
+        val etPassword = view.findViewById<EditText>(R.id.etPassword)
+        val etConfirmPassword = view.findViewById<EditText>(R.id.etConfirmPassword)
+        val btnRegister = view.findViewById<Button>(R.id.btnRegister)
+        val progressBar = view.findViewById<ProgressBar>(R.id.progressBar)
+        
+        val username = etUsername?.text.toString().trim()
+        val email = etEmail?.text.toString().trim()
+        val password = etPassword?.text.toString().trim()
+        val confirmPassword = etConfirmPassword?.text.toString().trim()
         
         if (TextUtils.isEmpty(username)) {
-            view?.findViewById<EditText>(R.id.etUsername)?.error = "请输入用户名"
+            etUsername?.error = "请输入用户名"
             return
         }
         
         if (TextUtils.isEmpty(email)) {
-            view?.findViewById<EditText>(R.id.etEmail)?.error = "请输入邮箱"
+            etEmail?.error = "请输入邮箱"
             return
         }
         
         if (TextUtils.isEmpty(password)) {
-            view?.findViewById<EditText>(R.id.etPassword)?.error = "请输入密码"
+            etPassword?.error = "请输入密码"
             return
         }
         
         if (password != confirmPassword) {
-            view?.findViewById<EditText>(R.id.etConfirmPassword)?.error = "密码不匹配"
+            etConfirmPassword?.error = "密码不匹配"
             return
         }
         
-        view?.findViewById<Button>(R.id.btnRegister)?.isEnabled = false
-        view?.findViewById<ProgressBar>(R.id.progressBar)?.visibility = View.VISIBLE
+        btnRegister?.isEnabled = false
+        progressBar?.visibility = View.VISIBLE
         
         lifecycleScope.launch {
             try {
@@ -138,8 +148,8 @@ class RegisterFragment : Fragment() {
             } catch (e: Exception) {
                 Toast.makeText(context, "网络错误: ${e.message}", Toast.LENGTH_SHORT).show()
             } finally {
-                view?.findViewById<Button>(R.id.btnRegister)?.isEnabled = true
-                view?.findViewById<ProgressBar>(R.id.progressBar)?.visibility = View.GONE
+                btnRegister?.isEnabled = true
+                progressBar?.visibility = View.GONE
             }
         }
     }

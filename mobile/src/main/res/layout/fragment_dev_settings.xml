@@ -55,7 +55,7 @@
                         android:textSize="16sp" />
 
                     <com.google.android.material.switchmaterial.SwitchMaterial
-                        android:id="@+id/switch_mock_mode"
+                        android:id="@+id/switchMockMode"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content" />
 
@@ -96,7 +96,7 @@
                     android:layout_marginBottom="16dp" />
 
                 <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btn_clear_data"
+                    android:id="@+id/btnClearData"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="清除用户数据"
@@ -104,7 +104,7 @@
                     style="@style/Widget.Material3.Button.OutlinedButton" />
 
                 <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btn_test_login"
+                    android:id="@+id/btnTestLogin"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="测试登录"

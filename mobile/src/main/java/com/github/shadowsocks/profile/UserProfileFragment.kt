@@ -34,7 +34,7 @@ import com.github.shadowsocks.api.ApiClient
 import kotlinx.coroutines.launch
 
 /**
- * 用户资料Fragment
+ * 用户资料Fragment - 简化版本
  */
 class UserProfileFragment : Fragment() {
     
@@ -55,22 +55,26 @@ class UserProfileFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         
-        setupUI()
-        loadUserData()
+        setupUI(view)
+        loadUserData(view)
     }
     
-    private fun setupUI() {
-        view?.findViewById<Button>(R.id.btnLogout)?.setOnClickListener {
+    private fun setupUI(view: View) {
+        val btnLogout = view.findViewById<Button>(R.id.btnLogout)
+        val btnRefresh = view.findViewById<Button>(R.id.btnRefresh)
+        
+        btnLogout?.setOnClickListener {
             logout()
         }
         
-        view?.findViewById<Button>(R.id.btnRefresh)?.setOnClickListener {
-            loadUserData()
+        btnRefresh?.setOnClickListener {
+            loadUserData(view)
         }
     }
     
-    private fun loadUserData() {
-        view?.findViewById<ProgressBar>(R.id.progressBar)?.visibility = View.VISIBLE
+    private fun loadUserData(view: View) {
+        val progressBar = view.findViewById<ProgressBar>(R.id.progressBar)
+        progressBar?.visibility = View.VISIBLE
         
         lifecycleScope.launch {
             try {
@@ -86,7 +90,7 @@ class UserProfileFragment : Fragment() {
                     if (userResponse.success) {
                         val user = userResponse.data
                         if (user != null) {
-                            updateUI(user)
+                            updateUI(view, user)
                         }
                     }
                     
@@ -94,7 +98,7 @@ class UserProfileFragment : Fragment() {
                     if (subscriptionResponse.success) {
                         val subscription = subscriptionResponse.data
                         if (subscription != null) {
-                            updateSubscriptionUI(subscription)
+                            updateSubscriptionUI(view, subscription)
                         }
                     }
                 } else {
@@ -103,7 +107,7 @@ class UserProfileFragment : Fragment() {
                     if (userResponse.isSuccessful && userResponse.body()?.success == true) {
                         val user = userResponse.body()?.data
                         if (user != null) {
-                            updateUI(user)
+                            updateUI(view, user)
                         }
                     }
                     
@@ -111,33 +115,44 @@ class UserProfileFragment : Fragment() {
                     if (subscriptionResponse.isSuccessful && subscriptionResponse.body()?.success == true) {
                         val subscription = subscriptionResponse.body()?.data
                         if (subscription != null) {
-                            updateSubscriptionUI(subscription)
+                            updateSubscriptionUI(view, subscription)
                         }
                     }
                 }
             } catch (e: Exception) {
                 Toast.makeText(context, "加载用户数据失败: ${e.message}", Toast.LENGTH_SHORT).show()
             } finally {
-                view?.findViewById<ProgressBar>(R.id.progressBar)?.visibility = View.GONE
+                progressBar?.visibility = View.GONE
             }
         }
     }
     
-    private fun updateUI(user: Any) {
+    private fun updateUI(view: View, user: Any) {
         // 更新用户信息UI
-        view?.findViewById<TextView>(R.id.tvUsername)?.text = "用户名: ${(user as? Map<String, Any>)?.get("username") ?: "未知"}"
-        view?.findViewById<TextView>(R.id.tvEmail)?.text = "邮箱: ${(user as? Map<String, Any>)?.get("email") ?: "未知"}"
-        view?.findViewById<TextView>(R.id.tvStatus)?.text = "状态: ${(user as? Map<String, Any>)?.get("status") ?: "未知"}"
+        val tvUsername = view.findViewById<TextView>(R.id.tvUsername)
+        val tvEmail = view.findViewById<TextView>(R.id.tvEmail)
+        val tvStatus = view.findViewById<TextView>(R.id.tvStatus)
+        
+        tvUsername?.text = "用户名: ${(user as? Map<String, Any>)?.get("username") ?: "未知"}"
+        tvEmail?.text = "邮箱: ${(user as? Map<String, Any>)?.get("email") ?: "未知"}"
+        tvStatus?.text = "状态: ${(user as? Map<String, Any>)?.get("status") ?: "未知"}"
     }
     
-    private fun updateSubscriptionUI(subscription: Any) {
+    private fun updateSubscriptionUI(view: View, subscription: Any) {
         // 更新订阅信息UI
-        view?.findViewById<TextView>(R.id.tvMemberLevel)?.text = "会员等级: ${(subscription as? Map<String, Any>)?.get("memberLevel") ?: "普通会员"}"
-        view?.findViewById<TextView>(R.id.tvMonthlyLimit)?.text = "月度限制: ${(subscription as? Map<String, Any>)?.get("monthlyLimit") ?: "无限制"}"
-        view?.findViewById<TextView>(R.id.tvMonthlyUsage)?.text = "月度使用: ${(subscription as? Map<String, Any>)?.get("monthlyUsage") ?: "0"}"
-        view?.findViewById<TextView>(R.id.tvMonthlyRemaining)?.text = "月度剩余: ${(subscription as? Map<String, Any>)?.get("monthlyRemainingTraffic") ?: "0"}"
-        view?.findViewById<TextView>(R.id.tvExpireDate)?.text = "到期时间: ${(subscription as? Map<String, Any>)?.get("expireDate") ?: "无限制"}"
-        view?.findViewById<TextView>(R.id.tvRemainingDays)?.text = "剩余天数: ${(subscription as? Map<String, Any>)?.get("remainingDays") ?: "无限制"}"
+        val tvMemberLevel = view.findViewById<TextView>(R.id.tvMemberLevel)
+        val tvMonthlyLimit = view.findViewById<TextView>(R.id.tvMonthlyLimit)
+        val tvMonthlyUsage = view.findViewById<TextView>(R.id.tvMonthlyUsage)
+        val tvMonthlyRemaining = view.findViewById<TextView>(R.id.tvMonthlyRemaining)
+        val tvExpireDate = view.findViewById<TextView>(R.id.tvExpireDate)
+        val tvRemainingDays = view.findViewById<TextView>(R.id.tvRemainingDays)
+        
+        tvMemberLevel?.text = "会员等级: ${(subscription as? Map<String, Any>)?.get("memberLevel") ?: "普通会员"}"
+        tvMonthlyLimit?.text = "月度限制: ${(subscription as? Map<String, Any>)?.get("monthlyLimit") ?: "无限制"}"
+        tvMonthlyUsage?.text = "月度使用: ${(subscription as? Map<String, Any>)?.get("monthlyUsage") ?: "0"}"
+        tvMonthlyRemaining?.text = "月度剩余: ${(subscription as? Map<String, Any>)?.get("monthlyRemainingTraffic") ?: "0"}"
+        tvExpireDate?.text = "到期时间: ${(subscription as? Map<String, Any>)?.get("expireDate") ?: "无限制"}"
+        tvRemainingDays?.text = "剩余天数: ${(subscription as? Map<String, Any>)?.get("remainingDays") ?: "无限制"}"
     }
     
     private fun logout() {

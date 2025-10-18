@@ -37,7 +37,7 @@ import com.github.shadowsocks.api.models.LoginRequest
 import kotlinx.coroutines.launch
 
 /**
- * 登录Fragment
+ * 登录Fragment - 简化版本
  */
 class LoginFragment : Fragment() {
     
@@ -58,35 +58,46 @@ class LoginFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         
-        setupUI()
+        setupUI(view)
     }
     
-    private fun setupUI() {
-        view?.findViewById<Button>(R.id.btnLogin)?.setOnClickListener {
-            performLogin()
+    private fun setupUI(view: View) {
+        val btnLogin = view.findViewById<Button>(R.id.btnLogin)
+        val btnRegister = view.findViewById<TextView>(R.id.btnRegister)
+        val etUsername = view.findViewById<EditText>(R.id.etUsername)
+        val etPassword = view.findViewById<EditText>(R.id.etPassword)
+        val progressBar = view.findViewById<ProgressBar>(R.id.progressBar)
+        
+        btnLogin?.setOnClickListener {
+            performLogin(view)
         }
         
-        view?.findViewById<TextView>(R.id.btnRegister)?.setOnClickListener {
+        btnRegister?.setOnClickListener {
             navigateToRegister()
         }
     }
     
-    private fun performLogin() {
-        val username = view?.findViewById<EditText>(R.id.etUsername)?.text.toString().trim() ?: ""
-        val password = view?.findViewById<EditText>(R.id.etPassword)?.text.toString().trim() ?: ""
+    private fun performLogin(view: View) {
+        val etUsername = view.findViewById<EditText>(R.id.etUsername)
+        val etPassword = view.findViewById<EditText>(R.id.etPassword)
+        val btnLogin = view.findViewById<Button>(R.id.btnLogin)
+        val progressBar = view.findViewById<ProgressBar>(R.id.progressBar)
+        
+        val username = etUsername?.text.toString().trim()
+        val password = etPassword?.text.toString().trim()
         
         if (TextUtils.isEmpty(username)) {
-            view?.findViewById<EditText>(R.id.etUsername)?.error = "请输入用户名"
+            etUsername?.error = "请输入用户名"
             return
         }
         
         if (TextUtils.isEmpty(password)) {
-            view?.findViewById<EditText>(R.id.etPassword)?.error = "请输入密码"
+            etPassword?.error = "请输入密码"
             return
         }
         
-        view?.findViewById<Button>(R.id.btnLogin)?.isEnabled = false
-        view?.findViewById<ProgressBar>(R.id.progressBar)?.visibility = View.VISIBLE
+        btnLogin?.isEnabled = false
+        progressBar?.visibility = View.VISIBLE
         
         lifecycleScope.launch {
             try {
@@ -126,8 +137,8 @@ class LoginFragment : Fragment() {
             } catch (e: Exception) {
                 Toast.makeText(context, "网络错误: ${e.message}", Toast.LENGTH_SHORT).show()
             } finally {
-                view?.findViewById<Button>(R.id.btnLogin)?.isEnabled = true
-                view?.findViewById<ProgressBar>(R.id.progressBar)?.visibility = View.GONE
+                btnLogin?.isEnabled = true
+                progressBar?.visibility = View.GONE
             }
         }
     }

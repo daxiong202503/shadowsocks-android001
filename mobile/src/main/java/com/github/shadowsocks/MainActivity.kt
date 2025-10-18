@@ -36,14 +36,14 @@ import androidx.browser.customtabs.CustomTabsIntent
 import androidx.coordinatorlayout.widget.CoordinatorLayout
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
-import androidx.core.view.*
 import androidx.drawerlayout.widget.DrawerLayout
-import androidx.preference.PreferenceDataStore
+import androidx.fragment.app.FragmentManager
 import com.github.shadowsocks.acl.CustomRulesFragment
-import com.github.shadowsocks.aidl.IShadowsocksService
-import com.github.shadowsocks.aidl.ShadowsocksConnection
-import com.github.shadowsocks.aidl.TrafficStats
 import com.github.shadowsocks.bg.BaseService
+import com.github.shadowsocks.bg.VpnService
+import com.github.shadowsocks.core.R
+import com.github.shadowsocks.database.Profile
+import com.github.shadowsocks.database.ProfileManager
 import com.github.shadowsocks.preference.DataStore
 import com.github.shadowsocks.preference.OnPreferenceDataStoreChangeListener
 import com.github.shadowsocks.subscription.SubscriptionFragment
@@ -57,117 +57,59 @@ import com.github.shadowsocks.widget.ListHolderListener
 import com.github.shadowsocks.widget.ServiceButton
 import com.github.shadowsocks.widget.StatsBar
 import com.google.android.material.navigation.NavigationView
-import com.google.android.material.snackbar.Snackbar
-import com.google.firebase.analytics.ktx.analytics
-import com.google.firebase.analytics.logEvent
-import com.google.firebase.ktx.Firebase
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 
-class MainActivity : AppCompatActivity(), ShadowsocksConnection.Callback, OnPreferenceDataStoreChangeListener,
-        NavigationView.OnNavigationItemSelectedListener {
-    companion object {
-        var stateListener: ((BaseService.State) -> Unit)? = null
-    }
-
-    // UI
+class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelectedListener,
+    OnPreferenceDataStoreChangeListener, ListHolderListener {
+    
+    private lateinit var service: VpnService
     private lateinit var fab: ServiceButton
     private lateinit var stats: StatsBar
-    internal lateinit var drawer: DrawerLayout
+    private lateinit var drawer: DrawerLayout
     private lateinit var navigation: NavigationView
-
-    lateinit var snackbar: CoordinatorLayout private set
-    fun snackbar(text: CharSequence = "") = Snackbar.make(snackbar, text, Snackbar.LENGTH_LONG).apply {
-        anchorView = fab
-    }
-
-    private val customTabsIntent by lazy {
-        CustomTabsIntent.Builder().apply {
-            setColorScheme(CustomTabsIntent.COLOR_SCHEME_SYSTEM)
-            setColorSchemeParams(CustomTabsIntent.COLOR_SCHEME_LIGHT, CustomTabColorSchemeParams.Builder().apply {
-                setToolbarColor(ContextCompat.getColor(this@MainActivity, R.color.light_color_primary))
-            }.build())
-            setColorSchemeParams(CustomTabsIntent.COLOR_SCHEME_DARK, CustomTabColorSchemeParams.Builder().apply {
-                setToolbarColor(ContextCompat.getColor(this@MainActivity, R.color.dark_color_primary))
-            }.build())
-        }.build()
-    }
-    fun launchUrl(uri: String) = try {
-        customTabsIntent.launchUrl(this, uri.toUri())
-    } catch (_: ActivityNotFoundException) {
-        snackbar(uri).show()
-    }
-
-    // service
-    var state = BaseService.State.Idle
-    override fun stateChanged(state: BaseService.State, profileName: String?, msg: String?) =
-            changeState(state, msg)
-    override fun trafficUpdated(profileId: Long, stats: TrafficStats) {
-        if (profileId == 0L) this@MainActivity.stats.updateTraffic(
-                stats.txRate, stats.rxRate, stats.txTotal, stats.rxTotal)
-        if (state != BaseService.State.Stopping) {
-            (supportFragmentManager.findFragmentById(R.id.fragment_holder) as? ProfilesFragment)
-                    ?.onTrafficUpdated(profileId, stats)
+    
+    private val serviceConnection = object : BaseService.Interface {
+        override fun stateChanged(state: BaseService.State, profileName: String?, msg: String?) {
+            runOnUiThread {
+                fab.updateState(state, profileName, msg)
+                stats.updateState(state, profileName, msg)
+            }
+        }
+        
+        override fun trafficUpdated(profile: Profile, stats: TrafficStats) {
+            runOnUiThread { this@MainActivity.stats.updateTraffic(profile, stats) }
         }
     }
-    override fun trafficPersisted(profileId: Long) {
-        ProfilesFragment.instance?.onTrafficPersisted(profileId)
-    }
-
-    private fun changeState(state: BaseService.State, msg: String? = null, animate: Boolean = true) {
-        fab.changeState(state, this.state, animate)
-        stats.changeState(state, animate)
-        if (msg != null) snackbar(getString(R.string.vpn_error, msg)).show()
-        this.state = state
-        ProfilesFragment.instance?.profilesAdapter?.notifyDataSetChanged()  // refresh button enabled state
-        stateListener?.invoke(state)
-    }
-
-    private fun toggle() = if (state.canStop) Core.stopService() else connect.launch(null)
-
-    private val connection = ShadowsocksConnection(true)
-    override fun onServiceConnected(service: IShadowsocksService) = changeState(try {
-        BaseService.State.entries[service.state]
-    } catch (_: RemoteException) {
-        BaseService.State.Idle
-    })
-    override fun onServiceDisconnected() = changeState(BaseService.State.Idle)
-    override fun onBinderDied() {
-        connection.disconnect(this)
-        connection.connect(this, this)
-    }
-
-    private val connect = registerForActivityResult(StartService()) {
-        if (it) snackbar().setText(R.string.vpn_permission_denied).show()
-    }
-
+    
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        WindowCompat.setDecorFitsSystemWindows(window, false)
-        setContentView(R.layout.layout_main)
+        setContentView(R.layout.activity_main)
         
         // 初始化API客户端
         ApiClient.initialize(this)
-        snackbar = findViewById(R.id.snackbar)
-        ViewCompat.setOnApplyWindowInsetsListener(snackbar, ListHolderListener)
-        stats = findViewById(R.id.stats)
-        stats.setOnClickListener { if (state == BaseService.State.Connected) stats.testConnection() }
+        
         drawer = findViewById(R.id.drawer)
-        val drawerHandler = object : OnBackPressedCallback(drawer.isOpen), DrawerLayout.DrawerListener {
-            override fun handleOnBackPressed() = drawer.closeDrawers()
-            override fun onDrawerSlide(drawerView: View, slideOffset: Float) { }
-            override fun onDrawerOpened(drawerView: View) {
-                isEnabled = true
-            }
-            override fun onDrawerClosed(drawerView: View) {
-                isEnabled = false
-            }
-            override fun onDrawerStateChanged(newState: Int) {
-                isEnabled = newState == DrawerLayout.STATE_IDLE == drawer.isOpen
-            }
-        }
-        onBackPressedDispatcher.addCallback(drawerHandler)
-        drawer.addDrawerListener(drawerHandler)
         navigation = findViewById(R.id.navigation)
         navigation.setNavigationItemSelectedListener(this)
+        
+        // 设置返回按钮处理
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (drawer.isDrawerOpen(navigation)) {
+                    drawer.closeDrawer(navigation)
+                } else {
+                    finish()
+                }
+            }
+        })
+        
+        // 初始化Fragment显示
         if (savedInstanceState == null) {
             // 检查是否已登录
             if (ApiClient.isLoggedIn()) {
@@ -175,47 +117,93 @@ class MainActivity : AppCompatActivity(), ShadowsocksConnection.Callback, OnPref
                 displayFragment(ProfilesFragment())
             } else {
                 // 显示登录页面
-                displayCustomFragment(LoginFragment().apply {
-                    setOnLoginSuccessListener {
-                        // 登录成功后切换到主页面
-                        navigation.menu.findItem(R.id.profiles).isChecked = true
-                        displayFragment(ProfilesFragment())
-                    }
-                })
+                showLoginFragment()
             }
         }
 
         fab = findViewById(R.id.fab)
         fab.initProgress(findViewById(R.id.fabProgress))
         fab.setOnClickListener { toggle() }
-        ViewCompat.setOnApplyWindowInsetsListener(fab) { view, insets ->
-            view.updateLayoutParams<ViewGroup.MarginLayoutParams> {
-                bottomMargin = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom +
-                        resources.getDimensionPixelOffset(R.dimen.mtrl_bottomappbar_fab_bottom_margin)
-            }
-            insets
-        }
-
-        changeState(BaseService.State.Idle, animate = false)    // reset everything to init state
-        connection.connect(this, this)
+        
+        stats = findViewById(R.id.stats)
+        stats.setOnClickListener { showProfiles() }
+        
         DataStore.publicStore.registerChangeListener(this)
     }
-
-    override fun onPreferenceDataStoreChanged(store: PreferenceDataStore, key: String) {
-        when (key) {
-            Key.serviceMode -> {
-                connection.disconnect(this)
-                connection.connect(this, this)
+    
+    private fun showLoginFragment() {
+        val loginFragment = LoginFragment().apply {
+            setOnLoginSuccessListener {
+                // 登录成功后切换到主页面
+                navigation.menu.findItem(R.id.profiles).isChecked = true
+                displayFragment(ProfilesFragment())
             }
+        }
+        supportFragmentManager.beginTransaction()
+            .replace(R.id.fragment_holder, loginFragment)
+            .commitAllowingStateLoss()
+    }
+    
+    private fun showUserProfileFragment() {
+        val userProfileFragment = UserProfileFragment().apply {
+            setOnLogoutListener {
+                // 退出登录后显示登录页面
+                showLoginFragment()
+            }
+        }
+        supportFragmentManager.beginTransaction()
+            .replace(R.id.fragment_holder, userProfileFragment)
+            .commitAllowingStateLoss()
+    }
+    
+    private fun showDevSettingsFragment() {
+        val devSettingsFragment = DevSettingsFragment()
+        supportFragmentManager.beginTransaction()
+            .replace(R.id.fragment_holder, devSettingsFragment)
+            .commitAllowingStateLoss()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        if (VpnService.prepare(this) == null) {
+            startService()
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (::service.isInitialized) {
+            service.bandwidthTimeout = 500
+        }
+    }
+
+    override fun onPause() {
+        if (::service.isInitialized) {
+            service.bandwidthTimeout = 0
+        }
+        super.onPause()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        if (::service.isInitialized) {
+            service.unregisterCallback(serviceConnection)
+            unbindService(serviceConnection)
+        }
+        DataStore.publicStore.unregisterChangeListener(this)
+        scope.cancel()
+    }
+
+    private fun startService() {
+        if (::service.isInitialized) {
+            service.registerCallback(serviceConnection)
+        } else {
+            StartService.register(this) { service = it as VpnService }
+            service.registerCallback(serviceConnection)
         }
     }
 
     private fun displayFragment(fragment: ToolbarFragment) {
-        supportFragmentManager.beginTransaction().replace(R.id.fragment_holder, fragment).commitAllowingStateLoss()
-        drawer.closeDrawers()
-    }
-    
-    private fun displayCustomFragment(fragment: Fragment) {
         supportFragmentManager.beginTransaction().replace(R.id.fragment_holder, fragment).commitAllowingStateLoss()
         drawer.closeDrawers()
     }
@@ -225,37 +213,35 @@ class MainActivity : AppCompatActivity(), ShadowsocksConnection.Callback, OnPref
             when (item.itemId) {
                 R.id.profiles -> {
                     displayFragment(ProfilesFragment())
-                    connection.bandwidthTimeout = connection.bandwidthTimeout   // request stats update
                 }
-                R.id.globalSettings -> displayFragment(GlobalSettingsFragment())
+                R.id.globalSettings -> {
+                    displayFragment(GlobalSettingsFragment())
+                }
                 R.id.about -> {
-                    Firebase.analytics.logEvent("about") { }
                     displayFragment(AboutFragment())
                 }
                 R.id.faq -> {
-                    launchUrl(getString(R.string.faq_url))
+                    try {
+                        CustomTabsIntent.Builder()
+                            .setDefaultColorSchemeParams(
+                                CustomTabColorSchemeParams.Builder()
+                                    .setToolbarColor(ContextCompat.getColor(this, R.color.material_blue_500))
+                                    .build()
+                            )
+                            .build()
+                            .launchUrl(this, getString(R.string.faq_url).toUri())
+                    } catch (e: ActivityNotFoundException) {
+                        launchUrl(getString(R.string.faq_url))
+                    }
                     return true
                 }
                 R.id.customRules -> displayFragment(CustomRulesFragment())
                 R.id.subscriptions -> displayFragment(SubscriptionFragment())
                 R.id.userProfile -> {
-                    val userProfileFragment = UserProfileFragment().apply {
-                        setOnLogoutListener {
-                            // 退出登录后显示登录页面
-                            val loginFragment = LoginFragment().apply {
-                                setOnLoginSuccessListener {
-                                    navigation.menu.findItem(R.id.profiles).isChecked = true
-                                    displayFragment(ProfilesFragment())
-                                }
-                            }
-                            displayCustomFragment(loginFragment)
-                        }
-                    }
-                    displayCustomFragment(userProfileFragment)
+                    showUserProfileFragment()
                 }
                 R.id.devSettings -> {
-                    val devSettingsFragment = DevSettingsFragment()
-                    displayCustomFragment(devSettingsFragment)
+                    showDevSettingsFragment()
                 }
                 else -> return false
             }
@@ -264,34 +250,62 @@ class MainActivity : AppCompatActivity(), ShadowsocksConnection.Callback, OnPref
         return true
     }
 
-    override fun onStart() {
-        super.onStart()
-        connection.bandwidthTimeout = 500
+    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
+        if (keyCode == KeyEvent.KEYCODE_MENU) {
+            drawer.openDrawer(navigation)
+            return true
+        }
+        return super.onKeyDown(keyCode, event)
     }
 
-    override fun onKeyShortcut(keyCode: Int, event: KeyEvent) = when {
-        keyCode == KeyEvent.KEYCODE_G && event.hasModifiers(KeyEvent.META_CTRL_ON) -> {
-            toggle()
-            true
+    override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
+        if (keyCode == KeyEvent.KEYCODE_MENU) {
+            return true
         }
-        keyCode == KeyEvent.KEYCODE_T && event.hasModifiers(KeyEvent.META_CTRL_ON) -> {
-            stats.testConnection()
-            true
+        return super.onKeyUp(keyCode, event)
+    }
+
+    override fun onKeyLongPress(keyCode: Int, event: KeyEvent): Boolean {
+        if (keyCode == KeyEvent.KEYCODE_MENU) {
+            drawer.openDrawer(navigation)
+            return true
         }
-        else -> (supportFragmentManager.findFragmentById(R.id.fragment_holder) as ToolbarFragment).toolbar.menu.let {
-            it.setQwertyMode(KeyCharacterMap.load(event.deviceId).keyboardType != KeyCharacterMap.NUMERIC)
-            it.performShortcut(keyCode, event, 0)
+        return super.onKeyLongPress(keyCode, event)
+    }
+
+    private fun toggle() {
+        if (::service.isInitialized) {
+            if (service.data.established) {
+                service.stop()
+            } else {
+                service.start()
+            }
         }
     }
 
-    override fun onStop() {
-        connection.bandwidthTimeout = 0
-        super.onStop()
+    private fun showProfiles() {
+        navigation.menu.findItem(R.id.profiles).isChecked = true
+        displayFragment(ProfilesFragment())
+        drawer.closeDrawers()
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        DataStore.publicStore.unregisterChangeListener(this)
-        connection.disconnect(this)
+    override fun onPreferenceDataStoreChanged(store: DataStore, key: String) {
+        if (key == Key.serviceMode) {
+            if (::service.isInitialized) {
+                service.reload()
+            }
+        }
+    }
+
+    override fun onListHolderCreated(holder: ListHolderListener.Holder) {
+        if (::service.isInitialized) {
+            service.bandwidthTimeout = 500
+        }
+    }
+
+    override fun onListHolderDestroyed(holder: ListHolderListener.Holder) {
+        if (::service.isInitialized) {
+            service.bandwidthTimeout = 0
+        }
     }
 }
