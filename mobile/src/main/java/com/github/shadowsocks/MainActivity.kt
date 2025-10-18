@@ -46,6 +46,10 @@ import com.github.shadowsocks.bg.BaseService
 import com.github.shadowsocks.preference.DataStore
 import com.github.shadowsocks.preference.OnPreferenceDataStoreChangeListener
 import com.github.shadowsocks.subscription.SubscriptionFragment
+import com.github.shadowsocks.auth.LoginFragment
+import com.github.shadowsocks.profile.UserProfileFragment
+import com.github.shadowsocks.settings.DevSettingsFragment
+import com.github.shadowsocks.api.ApiClient
 import com.github.shadowsocks.utils.Key
 import com.github.shadowsocks.utils.StartService
 import com.github.shadowsocks.widget.ListHolderListener
@@ -138,6 +142,9 @@ class MainActivity : AppCompatActivity(), ShadowsocksConnection.Callback, OnPref
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         setContentView(R.layout.layout_main)
+        
+        // 初始化API客户端
+        ApiClient.initialize(this)
         snackbar = findViewById(R.id.snackbar)
         ViewCompat.setOnApplyWindowInsetsListener(snackbar, ListHolderListener)
         stats = findViewById(R.id.stats)
@@ -161,8 +168,20 @@ class MainActivity : AppCompatActivity(), ShadowsocksConnection.Callback, OnPref
         navigation = findViewById(R.id.navigation)
         navigation.setNavigationItemSelectedListener(this)
         if (savedInstanceState == null) {
-            navigation.menu.findItem(R.id.profiles).isChecked = true
-            displayFragment(ProfilesFragment())
+            // 检查是否已登录
+            if (ApiClient.isLoggedIn()) {
+                navigation.menu.findItem(R.id.profiles).isChecked = true
+                displayFragment(ProfilesFragment())
+            } else {
+                // 显示登录页面
+                displayFragment(LoginFragment().apply {
+                    setOnLoginSuccessListener {
+                        // 登录成功后切换到主页面
+                        navigation.menu.findItem(R.id.profiles).isChecked = true
+                        displayFragment(ProfilesFragment())
+                    }
+                })
+            }
         }
 
         fab = findViewById(R.id.fab)
@@ -213,6 +232,18 @@ class MainActivity : AppCompatActivity(), ShadowsocksConnection.Callback, OnPref
                 }
                 R.id.customRules -> displayFragment(CustomRulesFragment())
                 R.id.subscriptions -> displayFragment(SubscriptionFragment())
+                R.id.userProfile -> displayFragment(UserProfileFragment().apply {
+                    setOnLogoutListener {
+                        // 退出登录后显示登录页面
+                        displayFragment(LoginFragment().apply {
+                            setOnLoginSuccessListener {
+                                navigation.menu.findItem(R.id.profiles).isChecked = true
+                                displayFragment(ProfilesFragment())
+                            }
+                        })
+                    }
+                })
+                R.id.devSettings -> displayFragment(DevSettingsFragment())
                 else -> return false
             }
             item.isChecked = true
