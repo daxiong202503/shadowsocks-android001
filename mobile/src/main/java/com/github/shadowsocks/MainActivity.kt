@@ -21,6 +21,7 @@
 package com.github.shadowsocks
 
 import android.content.ActivityNotFoundException
+import android.content.Intent
 import android.os.Bundle
 import android.os.RemoteException
 import android.view.KeyCharacterMap
@@ -41,6 +42,9 @@ import androidx.fragment.app.FragmentManager
 import com.github.shadowsocks.acl.CustomRulesFragment
 import com.github.shadowsocks.bg.BaseService
 import com.github.shadowsocks.bg.VpnService
+import com.github.shadowsocks.ProfilesFragment
+import com.github.shadowsocks.GlobalSettingsFragment
+import com.github.shadowsocks.AboutFragment
 import com.github.shadowsocks.core.R
 import com.github.shadowsocks.database.Profile
 import com.github.shadowsocks.database.ProfileManager
@@ -51,6 +55,7 @@ import com.github.shadowsocks.auth.LoginFragment
 import com.github.shadowsocks.profile.UserProfileFragment
 import com.github.shadowsocks.settings.DevSettingsFragment
 import com.github.shadowsocks.api.ApiClient
+import com.github.shadowsocks.aidl.TrafficStats
 import com.github.shadowsocks.utils.Key
 import com.github.shadowsocks.utils.StartService
 import com.github.shadowsocks.widget.ListHolderListener
@@ -231,7 +236,9 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
                             .build()
                             .launchUrl(this, getString(R.string.faq_url).toUri())
                     } catch (e: ActivityNotFoundException) {
-                        launchUrl(getString(R.string.faq_url))
+                        // 如果CustomTabs不可用，使用Intent打开URL
+                        val intent = Intent(Intent.ACTION_VIEW, getString(R.string.faq_url).toUri())
+                        startActivity(intent)
                     }
                     return true
                 }
