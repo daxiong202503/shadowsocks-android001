@@ -21,6 +21,7 @@ package com.github.shadowsocks.api
 
 import retrofit2.Response
 import retrofit2.http.*
+import com.github.shadowsocks.api.models.*
 
 /**
  * API服务接口

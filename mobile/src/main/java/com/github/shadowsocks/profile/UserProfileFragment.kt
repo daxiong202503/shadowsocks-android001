@@ -23,14 +23,14 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
+import android.widget.ProgressBar
+import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.github.shadowsocks.R
 import com.github.shadowsocks.api.ApiClient
-import com.github.shadowsocks.api.models.UserInfo
-import com.github.shadowsocks.api.models.UserSubscription
-import com.github.shadowsocks.databinding.FragmentUserProfileBinding
 import kotlinx.coroutines.launch
 
 /**
@@ -38,13 +38,10 @@ import kotlinx.coroutines.launch
  */
 class UserProfileFragment : Fragment() {
     
-    private var _binding: FragmentUserProfileBinding? = null
-    private val binding get() = _binding!!
-    
-    private var onLogoutListener: (() -> Unit)? = null
+    private var onLogout: (() -> Unit)? = null
     
     fun setOnLogoutListener(listener: () -> Unit) {
-        onLogoutListener = listener
+        onLogout = listener
     }
     
     override fun onCreateView(
@@ -52,128 +49,104 @@ class UserProfileFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        _binding = FragmentUserProfileBinding.inflate(inflater, container, false)
-        return binding.root
+        return inflater.inflate(R.layout.fragment_user_profile, container, false)
     }
     
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         
         setupUI()
-        loadUserInfo()
+        loadUserData()
     }
     
     private fun setupUI() {
-        binding.btnLogout.setOnClickListener {
-            performLogout()
+        view?.findViewById<Button>(R.id.btnLogout)?.setOnClickListener {
+            logout()
         }
         
-        binding.btnRefresh.setOnClickListener {
-            loadUserInfo()
+        view?.findViewById<Button>(R.id.btnRefresh)?.setOnClickListener {
+            loadUserData()
         }
     }
     
-    private fun loadUserInfo() {
-        binding.progressBar.visibility = View.VISIBLE
+    private fun loadUserData() {
+        view?.findViewById<ProgressBar>(R.id.progressBar)?.visibility = View.VISIBLE
         
         lifecycleScope.launch {
             try {
-                // 获取用户信息
-                val userResponse = ApiClient.getApiService().getCurrentUser("")
-                val subscriptionResponse = ApiClient.getApiService().getUserSubscription("")
-                
-                if (userResponse.isSuccessful && userResponse.body()?.success == true) {
-                    val userInfo = userResponse.body()?.data
-                    if (userInfo != null) {
-                        displayUserInfo(userInfo)
-                    }
+                val token = ApiClient.getToken()
+                if (token.isNullOrEmpty()) {
+                    Toast.makeText(context, "未登录", Toast.LENGTH_SHORT).show()
+                    return@launch
                 }
                 
-                if (subscriptionResponse.isSuccessful && subscriptionResponse.body()?.success == true) {
-                    val subscription = subscriptionResponse.body()?.data
-                    if (subscription != null) {
-                        displaySubscriptionInfo(subscription)
+                if (ApiClient.isMockMode()) {
+                    // 使用模拟API
+                    val userResponse = com.github.shadowsocks.api.MockApiService.getCurrentUser(token)
+                    if (userResponse.success) {
+                        val user = userResponse.data
+                        if (user != null) {
+                            updateUI(user)
+                        }
+                    }
+                    
+                    val subscriptionResponse = com.github.shadowsocks.api.MockApiService.getUserSubscription(token)
+                    if (subscriptionResponse.success) {
+                        val subscription = subscriptionResponse.data
+                        if (subscription != null) {
+                            updateSubscriptionUI(subscription)
+                        }
+                    }
+                } else {
+                    // 使用真实API
+                    val userResponse = ApiClient.getApiService().getCurrentUser(token)
+                    if (userResponse.isSuccessful && userResponse.body()?.success == true) {
+                        val user = userResponse.body()?.data
+                        if (user != null) {
+                            updateUI(user)
+                        }
+                    }
+                    
+                    val subscriptionResponse = ApiClient.getApiService().getUserSubscription(token)
+                    if (subscriptionResponse.isSuccessful && subscriptionResponse.body()?.success == true) {
+                        val subscription = subscriptionResponse.body()?.data
+                        if (subscription != null) {
+                            updateSubscriptionUI(subscription)
+                        }
                     }
                 }
-                
             } catch (e: Exception) {
-                Toast.makeText(context, "加载用户信息失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "加载用户数据失败: ${e.message}", Toast.LENGTH_SHORT).show()
             } finally {
-                binding.progressBar.visibility = View.GONE
+                view?.findViewById<ProgressBar>(R.id.progressBar)?.visibility = View.GONE
             }
         }
     }
     
-    private fun displayUserInfo(userInfo: UserInfo) {
-        binding.tvUsername.text = userInfo.username
-        binding.tvEmail.text = userInfo.email
-        binding.tvStatus.text = when (userInfo.status) {
-            "active" -> "活跃"
-            "inactive" -> "未激活"
-            else -> userInfo.status
-        }
-        
-        // 显示流量信息
-        val totalTraffic = formatTraffic(userInfo.totalTraffic)
-        val remainingTraffic = formatTraffic(userInfo.remainingTraffic)
-        
-        binding.tvTotalTraffic.text = totalTraffic
-        binding.tvRemainingTraffic.text = remainingTraffic
-        
-        // 显示会员信息
-        if (userInfo.memberLevelId != null) {
-            binding.tvMemberLevel.text = "会员等级: ${userInfo.memberLevelId}"
-        } else {
-            binding.tvMemberLevel.text = "未设置会员等级"
-        }
-        
-        if (userInfo.memberMonthlyLimit != null) {
-            binding.tvMonthlyLimit.text = "每月限流: ${formatTraffic(userInfo.memberMonthlyLimit)}"
-        } else {
-            binding.tvMonthlyLimit.text = "每月限流: 未设置"
-        }
-        
-        if (userInfo.monthlyUsage != null) {
-            binding.tvMonthlyUsage.text = "当月使用: ${formatTraffic(userInfo.monthlyUsage)}"
-        } else {
-            binding.tvMonthlyUsage.text = "当月使用: 0"
-        }
-        
-        if (userInfo.monthlyRemainingTraffic != null) {
-            binding.tvMonthlyRemaining.text = "当月剩余: ${formatTraffic(userInfo.monthlyRemainingTraffic)}"
-        } else {
-            binding.tvMonthlyRemaining.text = "当月剩余: 未设置"
-        }
+    private fun updateUI(user: Any) {
+        // 更新用户信息UI
+        view?.findViewById<TextView>(R.id.tvUsername)?.text = "用户名: ${(user as? Map<String, Any>)?.get("username") ?: "未知"}"
+        view?.findViewById<TextView>(R.id.tvEmail)?.text = "邮箱: ${(user as? Map<String, Any>)?.get("email") ?: "未知"}"
+        view?.findViewById<TextView>(R.id.tvStatus)?.text = "状态: ${(user as? Map<String, Any>)?.get("status") ?: "未知"}"
     }
     
-    private fun displaySubscriptionInfo(subscription: UserSubscription) {
-        binding.tvExpireDate.text = subscription.expireDate ?: "未设置"
-        
-        if (subscription.remainingDays != null) {
-            binding.tvRemainingDays.text = "剩余 ${subscription.remainingDays} 天"
-        } else {
-            binding.tvRemainingDays.text = "剩余天数: 未计算"
-        }
+    private fun updateSubscriptionUI(subscription: Any) {
+        // 更新订阅信息UI
+        view?.findViewById<TextView>(R.id.tvMemberLevel)?.text = "会员等级: ${(subscription as? Map<String, Any>)?.get("memberLevel") ?: "普通会员"}"
+        view?.findViewById<TextView>(R.id.tvMonthlyLimit)?.text = "月度限制: ${(subscription as? Map<String, Any>)?.get("monthlyLimit") ?: "无限制"}"
+        view?.findViewById<TextView>(R.id.tvMonthlyUsage)?.text = "月度使用: ${(subscription as? Map<String, Any>)?.get("monthlyUsage") ?: "0"}"
+        view?.findViewById<TextView>(R.id.tvMonthlyRemaining)?.text = "月度剩余: ${(subscription as? Map<String, Any>)?.get("monthlyRemainingTraffic") ?: "0"}"
+        view?.findViewById<TextView>(R.id.tvExpireDate)?.text = "到期时间: ${(subscription as? Map<String, Any>)?.get("expireDate") ?: "无限制"}"
+        view?.findViewById<TextView>(R.id.tvRemainingDays)?.text = "剩余天数: ${(subscription as? Map<String, Any>)?.get("remainingDays") ?: "无限制"}"
     }
     
-    private fun formatTraffic(bytes: Long): String {
-        return when {
-            bytes >= 1024 * 1024 * 1024 -> "${bytes / (1024 * 1024 * 1024)} GB"
-            bytes >= 1024 * 1024 -> "${bytes / (1024 * 1024)} MB"
-            bytes >= 1024 -> "${bytes / 1024} KB"
-            else -> "$bytes B"
-        }
-    }
-    
-    private fun performLogout() {
+    private fun logout() {
         ApiClient.clearToken()
         Toast.makeText(context, "已退出登录", Toast.LENGTH_SHORT).show()
-        onLogoutListener?.invoke()
+        onLogout?.invoke()
     }
     
     override fun onDestroyView() {
         super.onDestroyView()
-        _binding = null
     }
 }
-

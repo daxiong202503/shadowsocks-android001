@@ -23,27 +23,24 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
+import android.widget.Switch
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import com.github.shadowsocks.R
 import com.github.shadowsocks.api.ApiClient
-import com.github.shadowsocks.databinding.FragmentDevSettingsBinding
 
 /**
  * 开发设置Fragment
  */
 class DevSettingsFragment : Fragment() {
     
-    private var _binding: FragmentDevSettingsBinding? = null
-    private val binding get() = _binding!!
-    
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        _binding = FragmentDevSettingsBinding.inflate(inflater, container, false)
-        return binding.root
+        return inflater.inflate(R.layout.fragment_dev_settings, container, false)
     }
     
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -54,22 +51,22 @@ class DevSettingsFragment : Fragment() {
     }
     
     private fun setupUI() {
-        binding.switchMockMode.setOnCheckedChangeListener { _, isChecked ->
+        view?.findViewById<Switch>(R.id.switchMockMode)?.setOnCheckedChangeListener { _, isChecked ->
             ApiClient.setMockMode(isChecked)
             Toast.makeText(context, if (isChecked) "已启用模拟模式" else "已禁用模拟模式", Toast.LENGTH_SHORT).show()
         }
         
-        binding.btnClearData.setOnClickListener {
+        view?.findViewById<Button>(R.id.btnClearData)?.setOnClickListener {
             clearUserData()
         }
         
-        binding.btnTestLogin.setOnClickListener {
+        view?.findViewById<Button>(R.id.btnTestLogin)?.setOnClickListener {
             testLogin()
         }
     }
     
     private fun loadSettings() {
-        binding.switchMockMode.isChecked = ApiClient.isMockMode()
+        view?.findViewById<Switch>(R.id.switchMockMode)?.isChecked = ApiClient.isMockMode()
     }
     
     private fun clearUserData() {
@@ -83,7 +80,5 @@ class DevSettingsFragment : Fragment() {
     
     override fun onDestroyView() {
         super.onDestroyView()
-        _binding = null
     }
 }
-

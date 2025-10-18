@@ -24,22 +24,22 @@ import android.text.TextUtils
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
+import android.widget.EditText
+import android.widget.ProgressBar
+import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.github.shadowsocks.R
 import com.github.shadowsocks.api.ApiClient
 import com.github.shadowsocks.api.models.LoginRequest
-import com.github.shadowsocks.databinding.FragmentLoginBinding
 import kotlinx.coroutines.launch
 
 /**
  * 登录Fragment
  */
 class LoginFragment : Fragment() {
-    
-    private var _binding: FragmentLoginBinding? = null
-    private val binding get() = _binding!!
     
     private var onLoginSuccess: ((String) -> Unit)? = null
     
@@ -52,8 +52,7 @@ class LoginFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        _binding = FragmentLoginBinding.inflate(inflater, container, false)
-        return binding.root
+        return inflater.inflate(R.layout.fragment_login, container, false)
     }
     
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -63,35 +62,31 @@ class LoginFragment : Fragment() {
     }
     
     private fun setupUI() {
-        binding.btnLogin.setOnClickListener {
+        view?.findViewById<Button>(R.id.btnLogin)?.setOnClickListener {
             performLogin()
         }
         
-        binding.btnRegister.setOnClickListener {
-            // 切换到注册页面
-            parentFragmentManager.beginTransaction()
-                .replace(R.id.fragment_holder, RegisterFragment())
-                .addToBackStack(null)
-                .commit()
+        view?.findViewById<TextView>(R.id.btnRegister)?.setOnClickListener {
+            navigateToRegister()
         }
     }
     
     private fun performLogin() {
-        val username = binding.etUsername.text.toString().trim()
-        val password = binding.etPassword.text.toString().trim()
+        val username = view?.findViewById<EditText>(R.id.etUsername)?.text.toString().trim() ?: ""
+        val password = view?.findViewById<EditText>(R.id.etPassword)?.text.toString().trim() ?: ""
         
         if (TextUtils.isEmpty(username)) {
-            binding.etUsername.error = "请输入用户名"
+            view?.findViewById<EditText>(R.id.etUsername)?.error = "请输入用户名"
             return
         }
         
         if (TextUtils.isEmpty(password)) {
-            binding.etPassword.error = "请输入密码"
+            view?.findViewById<EditText>(R.id.etPassword)?.error = "请输入密码"
             return
         }
         
-        binding.btnLogin.isEnabled = false
-        binding.progressBar.visibility = View.VISIBLE
+        view?.findViewById<Button>(R.id.btnLogin)?.isEnabled = false
+        view?.findViewById<ProgressBar>(R.id.progressBar)?.visibility = View.VISIBLE
         
         lifecycleScope.launch {
             try {
@@ -99,7 +94,7 @@ class LoginFragment : Fragment() {
                 
                 if (ApiClient.isMockMode()) {
                     // 使用模拟API
-                    val response = MockApiService.login(request)
+                    val response = com.github.shadowsocks.api.MockApiService.login(request)
                     if (response.success) {
                         val loginResponse = response.data
                         if (loginResponse != null) {
@@ -131,14 +126,21 @@ class LoginFragment : Fragment() {
             } catch (e: Exception) {
                 Toast.makeText(context, "网络错误: ${e.message}", Toast.LENGTH_SHORT).show()
             } finally {
-                binding.btnLogin.isEnabled = true
-                binding.progressBar.visibility = View.GONE
+                view?.findViewById<Button>(R.id.btnLogin)?.isEnabled = true
+                view?.findViewById<ProgressBar>(R.id.progressBar)?.visibility = View.GONE
             }
         }
     }
     
+    private fun navigateToRegister() {
+        // 切换到注册页面
+        parentFragmentManager.beginTransaction()
+            .replace(R.id.fragment_holder, RegisterFragment())
+            .addToBackStack(null)
+            .commit()
+    }
+    
     override fun onDestroyView() {
         super.onDestroyView()
-        _binding = null
     }
 }

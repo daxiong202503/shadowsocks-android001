@@ -21,26 +21,25 @@ package com.github.shadowsocks.auth
 
 import android.os.Bundle
 import android.text.TextUtils
-import android.util.Patterns
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
+import android.widget.EditText
+import android.widget.ProgressBar
+import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.github.shadowsocks.R
 import com.github.shadowsocks.api.ApiClient
 import com.github.shadowsocks.api.models.RegisterRequest
-import com.github.shadowsocks.databinding.FragmentRegisterBinding
 import kotlinx.coroutines.launch
 
 /**
  * 注册Fragment
  */
 class RegisterFragment : Fragment() {
-    
-    private var _binding: FragmentRegisterBinding? = null
-    private val binding get() = _binding!!
     
     private var onRegisterSuccess: ((String) -> Unit)? = null
     
@@ -53,8 +52,7 @@ class RegisterFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        _binding = FragmentRegisterBinding.inflate(inflater, container, false)
-        return binding.root
+        return inflater.inflate(R.layout.fragment_register, container, false)
     }
     
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -64,89 +62,97 @@ class RegisterFragment : Fragment() {
     }
     
     private fun setupUI() {
-        binding.btnRegister.setOnClickListener {
+        view?.findViewById<Button>(R.id.btnRegister)?.setOnClickListener {
             performRegister()
         }
         
-        binding.btnLogin.setOnClickListener {
-            // 切换到登录页面
-            parentFragmentManager.beginTransaction()
-                .replace(R.id.fragment_holder, LoginFragment())
-                .addToBackStack(null)
-                .commit()
+        view?.findViewById<TextView>(R.id.btnLogin)?.setOnClickListener {
+            navigateToLogin()
         }
     }
     
     private fun performRegister() {
-        val username = binding.etUsername.text.toString().trim()
-        val email = binding.etEmail.text.toString().trim()
-        val password = binding.etPassword.text.toString().trim()
-        val confirmPassword = binding.etConfirmPassword.text.toString().trim()
+        val username = view?.findViewById<EditText>(R.id.etUsername)?.text.toString().trim() ?: ""
+        val email = view?.findViewById<EditText>(R.id.etEmail)?.text.toString().trim() ?: ""
+        val password = view?.findViewById<EditText>(R.id.etPassword)?.text.toString().trim() ?: ""
+        val confirmPassword = view?.findViewById<EditText>(R.id.etConfirmPassword)?.text.toString().trim() ?: ""
         
         if (TextUtils.isEmpty(username)) {
-            binding.etUsername.error = "请输入用户名"
+            view?.findViewById<EditText>(R.id.etUsername)?.error = "请输入用户名"
             return
         }
         
         if (TextUtils.isEmpty(email)) {
-            binding.etEmail.error = "请输入邮箱"
-            return
-        }
-        
-        if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-            binding.etEmail.error = "请输入有效的邮箱地址"
+            view?.findViewById<EditText>(R.id.etEmail)?.error = "请输入邮箱"
             return
         }
         
         if (TextUtils.isEmpty(password)) {
-            binding.etPassword.error = "请输入密码"
-            return
-        }
-        
-        if (password.length < 6) {
-            binding.etPassword.error = "密码长度至少6位"
+            view?.findViewById<EditText>(R.id.etPassword)?.error = "请输入密码"
             return
         }
         
         if (password != confirmPassword) {
-            binding.etConfirmPassword.error = "两次输入的密码不一致"
+            view?.findViewById<EditText>(R.id.etConfirmPassword)?.error = "密码不匹配"
             return
         }
         
-        binding.btnRegister.isEnabled = false
-        binding.progressBar.visibility = View.VISIBLE
+        view?.findViewById<Button>(R.id.btnRegister)?.isEnabled = false
+        view?.findViewById<ProgressBar>(R.id.progressBar)?.visibility = View.VISIBLE
         
         lifecycleScope.launch {
             try {
                 val request = RegisterRequest(username, email, password)
-                val response = ApiClient.getApiService().register(request)
                 
-                if (response.isSuccessful && response.body()?.success == true) {
-                    val registerResponse = response.body()?.data
-                    if (registerResponse != null) {
-                        // 保存认证信息
-                        ApiClient.saveToken(registerResponse.token)
-                        ApiClient.saveUserId(registerResponse.user.id)
-                        
-                        Toast.makeText(context, "注册成功", Toast.LENGTH_SHORT).show()
-                        onRegisterSuccess?.invoke(registerResponse.token)
+                if (ApiClient.isMockMode()) {
+                    // 使用模拟API
+                    val response = com.github.shadowsocks.api.MockApiService.register(request)
+                    if (response.success) {
+                        val registerResponse = response.data
+                        if (registerResponse != null) {
+                            ApiClient.saveToken(registerResponse.token)
+                            ApiClient.saveUserId(registerResponse.user.id)
+                            Toast.makeText(context, "注册成功 (模拟模式)", Toast.LENGTH_SHORT).show()
+                            onRegisterSuccess?.invoke(registerResponse.token)
+                        }
+                    } else {
+                        Toast.makeText(context, response.message ?: "注册失败", Toast.LENGTH_SHORT).show()
                     }
                 } else {
-                    val errorMessage = response.body()?.message ?: "注册失败"
-                    Toast.makeText(context, errorMessage, Toast.LENGTH_SHORT).show()
+                    // 使用真实API
+                    val response = ApiClient.getApiService().register(request)
+                    
+                    if (response.isSuccessful && response.body()?.success == true) {
+                        val registerResponse = response.body()?.data
+                        if (registerResponse != null) {
+                            ApiClient.saveToken(registerResponse.token)
+                            ApiClient.saveUserId(registerResponse.user.id)
+                            Toast.makeText(context, "注册成功", Toast.LENGTH_SHORT).show()
+                            onRegisterSuccess?.invoke(registerResponse.token)
+                        }
+                    } else {
+                        val errorMessage = response.body()?.message ?: "注册失败"
+                        Toast.makeText(context, errorMessage, Toast.LENGTH_SHORT).show()
+                    }
                 }
             } catch (e: Exception) {
                 Toast.makeText(context, "网络错误: ${e.message}", Toast.LENGTH_SHORT).show()
             } finally {
-                binding.btnRegister.isEnabled = true
-                binding.progressBar.visibility = View.GONE
+                view?.findViewById<Button>(R.id.btnRegister)?.isEnabled = true
+                view?.findViewById<ProgressBar>(R.id.progressBar)?.visibility = View.GONE
             }
         }
     }
     
+    private fun navigateToLogin() {
+        // 切换到登录页面
+        parentFragmentManager.beginTransaction()
+            .replace(R.id.fragment_holder, LoginFragment())
+            .addToBackStack(null)
+            .commit()
+    }
+    
     override fun onDestroyView() {
         super.onDestroyView()
-        _binding = null
     }
 }
-

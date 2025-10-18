@@ -232,18 +232,25 @@ class MainActivity : AppCompatActivity(), ShadowsocksConnection.Callback, OnPref
                 }
                 R.id.customRules -> displayFragment(CustomRulesFragment())
                 R.id.subscriptions -> displayFragment(SubscriptionFragment())
-                R.id.userProfile -> displayFragment(UserProfileFragment().apply {
-                    setOnLogoutListener {
-                        // 退出登录后显示登录页面
-                        displayFragment(LoginFragment().apply {
-                            setOnLoginSuccessListener {
-                                navigation.menu.findItem(R.id.profiles).isChecked = true
-                                displayFragment(ProfilesFragment())
+                R.id.userProfile -> {
+                    val userProfileFragment = UserProfileFragment().apply {
+                        setOnLogoutListener {
+                            // 退出登录后显示登录页面
+                            val loginFragment = LoginFragment().apply {
+                                setOnLoginSuccessListener {
+                                    navigation.menu.findItem(R.id.profiles).isChecked = true
+                                    displayFragment(ProfilesFragment())
+                                }
                             }
-                        })
+                            displayFragment(loginFragment)
+                        }
                     }
-                })
-                R.id.devSettings -> displayFragment(DevSettingsFragment())
+                    displayFragment(userProfileFragment)
+                }
+                R.id.devSettings -> {
+                    val devSettingsFragment = DevSettingsFragment()
+                    displayFragment(devSettingsFragment)
+                }
                 else -> return false
             }
             item.isChecked = true
