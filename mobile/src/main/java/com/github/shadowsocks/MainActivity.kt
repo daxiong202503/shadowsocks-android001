@@ -14,7 +14,7 @@
  *  GNU General Public License for more details.                               *
  *                                                                             *
  *  You should have received a copy of the GNU General Public License          *
- *  along with this program. If not, see <http://www.gnu.org/licenses/>.       *
+ *  along with this program. If not, see <http://www.gnu.org/licenses/>.     *
  *                                                                             *
  *******************************************************************************/
 
@@ -45,10 +45,6 @@ import com.github.shadowsocks.database.Profile
 import com.github.shadowsocks.preference.DataStore
 import com.github.shadowsocks.preference.OnPreferenceDataStoreChangeListener
 import com.github.shadowsocks.subscription.SubscriptionFragment
-import com.github.shadowsocks.auth.LoginFragment
-import com.github.shadowsocks.profile.UserProfileFragment
-import com.github.shadowsocks.settings.DevSettingsFragment
-import com.github.shadowsocks.api.ApiClient
 import com.github.shadowsocks.aidl.TrafficStats
 import com.github.shadowsocks.utils.Key
 import com.github.shadowsocks.utils.StartService
@@ -89,9 +85,6 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         
-        // 初始化API客户端
-        ApiClient.initialize(this)
-        
         drawer = findViewById(R.id.drawer)
         navigation = findViewById(R.id.navigation)
         navigation.setNavigationItemSelectedListener(this)
@@ -109,14 +102,8 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         
         // 初始化Fragment显示
         if (savedInstanceState == null) {
-            // 检查是否已登录
-            if (ApiClient.isLoggedIn()) {
-                navigation.menu.findItem(R.id.profiles).isChecked = true
-                displayToolbarFragment(ProfilesFragment())
-            } else {
-                // 显示登录页面
-                showLoginFragment()
-            }
+            navigation.menu.findItem(R.id.profiles).isChecked = true
+            displayFragment(ProfilesFragment())
         }
 
         fab = findViewById(R.id.fab)
@@ -127,38 +114,6 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         stats.setOnClickListener { showProfiles() }
         
         DataStore.publicStore.registerChangeListener(this)
-    }
-    
-    private fun showLoginFragment() {
-        val loginFragment = LoginFragment().apply {
-            setOnLoginSuccessListener {
-                // 登录成功后切换到主页面
-                navigation.menu.findItem(R.id.profiles).isChecked = true
-                displayToolbarFragment(ProfilesFragment())
-            }
-        }
-        supportFragmentManager.beginTransaction()
-            .replace(R.id.fragment_holder, loginFragment)
-            .commitAllowingStateLoss()
-    }
-    
-    private fun showUserProfileFragment() {
-        val userProfileFragment = UserProfileFragment().apply {
-            setOnLogoutListener {
-                // 退出登录后显示登录页面
-                showLoginFragment()
-            }
-        }
-        supportFragmentManager.beginTransaction()
-            .replace(R.id.fragment_holder, userProfileFragment)
-            .commitAllowingStateLoss()
-    }
-    
-    private fun showDevSettingsFragment() {
-        val devSettingsFragment = DevSettingsFragment()
-        supportFragmentManager.beginTransaction()
-            .replace(R.id.fragment_holder, devSettingsFragment)
-            .commitAllowingStateLoss()
     }
 
     override fun onStart() {
@@ -201,7 +156,7 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         }
     }
 
-    private fun displayToolbarFragment(fragment: ToolbarFragment) {
+    private fun displayFragment(fragment: ToolbarFragment) {
         supportFragmentManager.beginTransaction().replace(R.id.fragment_holder, fragment).commitAllowingStateLoss()
         drawer.closeDrawers()
     }
@@ -210,13 +165,13 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         if (item.isChecked) drawer.closeDrawers() else {
             when (item.itemId) {
                 R.id.profiles -> {
-                    displayToolbarFragment(ProfilesFragment())
+                    displayFragment(ProfilesFragment())
                 }
                 R.id.globalSettings -> {
-                    displayToolbarFragment(GlobalSettingsFragment())
+                    displayFragment(GlobalSettingsFragment())
                 }
                 R.id.about -> {
-                    displayToolbarFragment(AboutFragment())
+                    displayFragment(AboutFragment())
                 }
                 R.id.faq -> {
                     try {
@@ -235,14 +190,8 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
                     }
                     return true
                 }
-                R.id.customRules -> displayToolbarFragment(CustomRulesFragment())
-                R.id.subscriptions -> displayToolbarFragment(SubscriptionFragment())
-                R.id.userProfile -> {
-                    showUserProfileFragment()
-                }
-                R.id.devSettings -> {
-                    showDevSettingsFragment()
-                }
+                R.id.customRules -> displayFragment(CustomRulesFragment())
+                R.id.subscriptions -> displayFragment(SubscriptionFragment())
                 else -> return false
             }
             item.isChecked = true
@@ -285,7 +234,7 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
 
     private fun showProfiles() {
         navigation.menu.findItem(R.id.profiles).isChecked = true
-        displayToolbarFragment(ProfilesFragment())
+        displayFragment(ProfilesFragment())
         drawer.closeDrawers()
     }
 
