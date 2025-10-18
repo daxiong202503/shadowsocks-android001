@@ -23,22 +23,16 @@ package com.github.shadowsocks
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.os.Bundle
-import android.os.RemoteException
-import android.view.KeyCharacterMap
 import android.view.KeyEvent
 import android.view.MenuItem
-import android.view.View
-import android.view.ViewGroup
 import androidx.activity.OnBackPressedCallback
-import androidx.fragment.app.Fragment
 import androidx.appcompat.app.AppCompatActivity
 import androidx.browser.customtabs.CustomTabColorSchemeParams
 import androidx.browser.customtabs.CustomTabsIntent
-import androidx.coordinatorlayout.widget.CoordinatorLayout
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.drawerlayout.widget.DrawerLayout
-import androidx.fragment.app.FragmentManager
+import androidx.fragment.app.Fragment
 import com.github.shadowsocks.acl.CustomRulesFragment
 import com.github.shadowsocks.bg.BaseService
 import com.github.shadowsocks.bg.VpnService
@@ -48,7 +42,6 @@ import com.github.shadowsocks.AboutFragment
 import com.github.shadowsocks.ToolbarFragment
 import com.github.shadowsocks.core.R
 import com.github.shadowsocks.database.Profile
-import com.github.shadowsocks.database.ProfileManager
 import com.github.shadowsocks.preference.DataStore
 import com.github.shadowsocks.preference.OnPreferenceDataStoreChangeListener
 import com.github.shadowsocks.subscription.SubscriptionFragment
@@ -67,7 +60,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelectedListener,
     OnPreferenceDataStoreChangeListener, ListHolderListener {
@@ -120,7 +112,7 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
             // 检查是否已登录
             if (ApiClient.isLoggedIn()) {
                 navigation.menu.findItem(R.id.profiles).isChecked = true
-                displayFragment(ProfilesFragment())
+                displayToolbarFragment(ProfilesFragment())
             } else {
                 // 显示登录页面
                 showLoginFragment()
@@ -142,7 +134,7 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
             setOnLoginSuccessListener {
                 // 登录成功后切换到主页面
                 navigation.menu.findItem(R.id.profiles).isChecked = true
-                displayFragment(ProfilesFragment())
+                displayToolbarFragment(ProfilesFragment())
             }
         }
         supportFragmentManager.beginTransaction()
@@ -209,7 +201,7 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         }
     }
 
-    private fun displayFragment(fragment: Fragment) {
+    private fun displayToolbarFragment(fragment: ToolbarFragment) {
         supportFragmentManager.beginTransaction().replace(R.id.fragment_holder, fragment).commitAllowingStateLoss()
         drawer.closeDrawers()
     }
@@ -218,13 +210,13 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         if (item.isChecked) drawer.closeDrawers() else {
             when (item.itemId) {
                 R.id.profiles -> {
-                    displayFragment(ProfilesFragment())
+                    displayToolbarFragment(ProfilesFragment())
                 }
                 R.id.globalSettings -> {
-                    displayFragment(GlobalSettingsFragment())
+                    displayToolbarFragment(GlobalSettingsFragment())
                 }
                 R.id.about -> {
-                    displayFragment(AboutFragment())
+                    displayToolbarFragment(AboutFragment())
                 }
                 R.id.faq -> {
                     try {
@@ -243,8 +235,8 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
                     }
                     return true
                 }
-                R.id.customRules -> displayFragment(CustomRulesFragment())
-                R.id.subscriptions -> displayFragment(SubscriptionFragment())
+                R.id.customRules -> displayToolbarFragment(CustomRulesFragment())
+                R.id.subscriptions -> displayToolbarFragment(SubscriptionFragment())
                 R.id.userProfile -> {
                     showUserProfileFragment()
                 }
@@ -293,7 +285,7 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
 
     private fun showProfiles() {
         navigation.menu.findItem(R.id.profiles).isChecked = true
-        displayFragment(ProfilesFragment())
+        displayToolbarFragment(ProfilesFragment())
         drawer.closeDrawers()
     }
 
